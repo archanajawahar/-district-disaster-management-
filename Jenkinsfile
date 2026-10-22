@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -238,7 +237,7 @@ pipeline {
 
                             bat 'kubectl get deployment disaster-response-portal'
                             bat 'kubectl get pods -l app=disaster-response-portal'
-                            bat 'kubectl get service disaster-response-portal'
+                            bat 'kubectl get service disaster-response-portal-service'
 
                             echo 'Rollback test passed: the failed rollout was detected and the previous revision recovered.'
                         } else {
@@ -277,7 +276,7 @@ pipeline {
 
                             bat 'kubectl get deployment disaster-response-portal'
                             bat 'kubectl get pods -l app=disaster-response-portal'
-                            bat 'kubectl get service disaster-response-portal'
+                            bat 'kubectl get service disaster-response-portal-service'
 
                             echo 'Stable deployment completed successfully.'
                         }
