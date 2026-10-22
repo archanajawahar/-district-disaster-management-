@@ -17,8 +17,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'archanajawahar14/disaster-response-portal'
-        DOCKER_CREDENTIALS_ID = 'dockerhub-userpass'
-        KUBECONFIG_CREDENTIALS_ID = 'kubernetes-config'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
+        KUBECONFIG_CREDENTIALS_ID = 'kubernetes-creds'
         K8S_DEPLOYMENT = 'disaster-response-portal'
         K8S_CONTAINER = 'disaster-response-portal'
     }
