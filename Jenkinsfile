@@ -160,59 +160,60 @@ pipeline {
             }
         }
 
-        stage('Push Image to Docker Hub') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DH_USER',
-                        passwordVariable: 'DH_TOKEN'
-                    )
-                ]) {
-                    script {
-                        int loginStatus = powershell(
-                            returnStatus: true,
-                            script: '''
-                                $ErrorActionPreference = 'Stop'
+        
+stage('Push Image to Docker Hub') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DH_USER',
+                passwordVariable: 'DH_TOKEN'
+            )
+        ]) {
+            script {
+                int loginStatus = powershell(
+                    returnStatus: true,
+                    script: '''
+                        $ErrorActionPreference = 'Stop'
 
-                                if ([string]::IsNullOrWhiteSpace($env:DH_USER)) {
-                                    Write-Error "Docker Hub username is empty."
-                                    exit 1
-                                }
-
-                                if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) {
-                                    Write-Error "Docker Hub token is empty."
-                                    exit 1
-                                }
-
-                                $env:DH_TOKEN |
-                                    docker login --username $env:DH_USER --password-stdin
-
-                                if ($LASTEXITCODE -ne 0) {
-                                    exit $LASTEXITCODE
-                                }
-
-                                Write-Host "Docker Hub authentication succeeded."
-                            '''
-                        )
-
-                        if (loginStatus != 0) {
-                            error('Docker Hub login failed. Verify the Jenkins credential binding and valid token.')
+                        if ([string]::IsNullOrWhiteSpace($env:DH_USER)) {
+                            Write-Error "Jenkins Docker Hub username is empty."
+                            exit 1
                         }
 
-                        try {
-                            bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
-
-                            bat "docker tag ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-
-                            bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                        } finally {
-                            powershell 'docker logout'
+                        if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) {
+                            Write-Error "Jenkins Docker Hub token is empty."
+                            exit 1
                         }
-                    }
+
+                        $env:DH_TOKEN | docker login `
+                            --username $env:DH_USER `
+                            --password-stdin
+
+                        if ($LASTEXITCODE -ne 0) {
+                            exit $LASTEXITCODE
+                        }
+                    '''
+                )
+
+                if (loginStatus != 0) {
+                    error('Docker Hub login failed. Verify the Jenkins credential ID and token.')
+                }
+
+                try {
+                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+
+                    bat "docker tag ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
+
+                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
+                } finally {
+                    powershell 'docker logout'
                 }
             }
         }
+    }
+}
+
 
         stage('Deploy and Verify on Kubernetes') {
             when {
