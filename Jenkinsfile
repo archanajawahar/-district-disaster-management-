@@ -12,13 +12,13 @@ pipeline {
         choice(
             name: 'RELEASE_MODE',
             choices: ['STABLE', 'FAULTY_ROLLBACK_TEST'],
-            description: 'Select stable deployment or automatic rollback test.'
+            description: 'Choose stable deployment or test automatic rollback.'
         )
 
         booleanParam(
             name: 'DEPLOY_TO_KUBERNETES',
             defaultValue: true,
-            description: 'Deploy the application to Kubernetes.'
+            description: 'Deploy to Kubernetes after successful image push.'
         )
     }
 
@@ -27,9 +27,6 @@ pipeline {
         IMAGE_NAME = 'e-waste-portal'
         DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
         KUBECONFIG_CREDENTIALS_ID = 'kubernetes-creds'
-        K8S_DEPLOYMENT = 'e-waste-portal'
-        K8S_CONTAINER = 'e-waste-portal'
-        K8S_SERVICE = 'e-waste-portal'
     }
 
     stages {
@@ -38,13 +35,11 @@ pipeline {
             steps {
                 checkout scm
                 bat 'git log -1 --oneline'
-                bat 'dir'
             }
         }
 
         stage('Parallel Validation') {
             parallel {
-
                 stage('HTML Content Test') {
                     steps {
                         bat 'findstr /C:"Central Civic Collection Centre" index.html'
@@ -53,7 +48,7 @@ pipeline {
                     }
                 }
 
-                stage('Kubernetes Manifest Test') {
+                stage('Deployment Manifest Test') {
                     steps {
                         bat 'findstr /C:"kind: Deployment" deployment.yaml'
                         bat 'findstr /C:"readinessProbe" deployment.yaml'
@@ -78,15 +73,6 @@ pipeline {
         stage('Local Container Smoke Test') {
             steps {
                 script {
-                    bat 'docker rm -f e-waste-smoke >NUL 2>&1'
-                    // The preceding cleanup may fail when no old container exists.
-                }
-            }
-        }
-
-        stage('Run Application Smoke Test') {
-            steps {
-                script {
                     bat '''
                         @echo off
                         docker rm -f e-waste-smoke >NUL 2>&1
@@ -97,11 +83,15 @@ pipeline {
 
                     bat '''
                         @echo off
-                        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=0; $i -lt 15; $i++){ try { $r=Invoke-WebRequest -UseBasicParsing http://localhost:18087; if($r.StatusCode -eq 200 -and $r.Content.Contains('Central Civic Collection Centre')) { $ok=$true; break } } catch {}; Start-Sleep -Seconds 2 }; if(-not $ok){ docker logs e-waste-smoke; exit 1 }"
+                        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=0;$i -lt 15;$i++){try{$r=Invoke-WebRequest -UseBasicParsing http://localhost:18087; if($r.StatusCode -eq 200 -and $r.Content.Contains('Central Civic Collection Centre')){$ok=$true;break}}catch{}; Start-Sleep -Seconds 2}; if(-not $ok){docker logs e-waste-smoke; exit 1}"
                         if errorlevel 1 exit /b 1
                     '''
 
-                    bat 'docker rm -f e-waste-smoke'
+                    bat '''
+                        @echo off
+                        docker rm -f e-waste-smoke
+                        exit /b 0
+                    '''
                 }
             }
         }
@@ -129,12 +119,12 @@ pipeline {
                             returnStatus: true,
                             script: '''
                                 @echo off
-                                powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if ([string]::IsNullOrWhiteSpace($env:DH_USER)) { Write-Error 'Docker Hub username is missing'; exit 1 }; if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) { Write-Error 'Docker Hub token is missing'; exit 1 }; $env:DH_TOKEN | docker login --username $env:DH_USER --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+                                powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if ([string]::IsNullOrWhiteSpace($env:DH_USER)) { Write-Error 'Jenkins username binding is empty'; exit 2 }; if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) { Write-Error 'Jenkins token binding is empty'; exit 3 }; $token = $env:DH_TOKEN.Trim(); $token | docker login --username $env:DH_USER.Trim() --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
                             '''
                         )
 
                         if (loginStatus != 0) {
-                            error('Docker Hub login failed. Verify Jenkins credential ID and Docker Hub access token.')
+                            error("Docker Hub login failed with exit code ${loginStatus}. Check which Jenkins credential is bound to dockerhub-creds.")
                         }
 
                         try {
@@ -168,11 +158,9 @@ pipeline {
                         )
                     ]) {
                         bat 'kubectl version --client'
-                        bat 'kubectl config current-context'
-
                         bat 'kubectl apply -f deployment.yaml'
 
-                        bat "kubectl set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                        bat "kubectl set image deployment/e-waste-portal e-waste-portal=${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
 
                         if (params.RELEASE_MODE == 'FAULTY_ROLLBACK_TEST') {
                             echo 'Applying an intentionally faulty readiness probe.'
@@ -206,13 +194,13 @@ pipeline {
 
                             bat 'kubectl patch deployment e-waste-portal --type=strategic --patch-file=faulty-patch.json'
 
-                            int faultyStatus = bat(
+                            int faultyRolloutStatus = bat(
                                 returnStatus: true,
                                 script: 'kubectl rollout status deployment/e-waste-portal --timeout=90s'
                             )
 
-                            if (faultyStatus == 0) {
-                                echo 'Faulty rollout unexpectedly succeeded; restoring the previous revision.'
+                            if (faultyRolloutStatus == 0) {
+                                echo 'The faulty deployment unexpectedly became ready.'
 
                                 int undoStatus = bat(
                                     returnStatus: true,
@@ -225,10 +213,10 @@ pipeline {
 
                                 bat 'kubectl rollout status deployment/e-waste-portal --timeout=120s'
 
-                                error('The faulty rollout unexpectedly passed. Check the readiness probe.')
+                                error('Rollback recovery succeeded, but the faulty rollout unexpectedly passed. Review the probe configuration.')
                             }
 
-                            echo 'Faulty rollout failure detected. Rolling back.'
+                            echo 'Faulty rollout failed as expected. Attempting automatic rollback.'
 
                             bat 'kubectl get pods -l app=e-waste-portal -o wide'
                             bat 'kubectl describe deployment e-waste-portal'
@@ -240,7 +228,7 @@ pipeline {
                             )
 
                             if (undoStatus != 0) {
-                                error('Automatic rollback command failed.')
+                                error('Rollback command failed. Check Kubernetes access and deployment history.')
                             }
 
                             int recoveryStatus = bat(
@@ -249,14 +237,14 @@ pipeline {
                             )
 
                             if (recoveryStatus != 0) {
-                                error('Rollback did not restore a healthy deployment.')
+                                error('Rollback was requested, but the previous revision did not become healthy.')
                             }
 
                             bat 'kubectl get deployment e-waste-portal'
                             bat 'kubectl get pods -l app=e-waste-portal'
                             bat 'kubectl get service e-waste-portal'
 
-                            echo 'Rollback test completed: the failed rollout was detected and the previous revision recovered.'
+                            echo 'Rollback test passed: the failed rollout was detected and the previous revision recovered.'
 
                         } else {
                             int rolloutStatus = bat(
@@ -282,7 +270,7 @@ pipeline {
 
                                 bat 'kubectl rollout status deployment/e-waste-portal --timeout=120s'
 
-                                error('Stable deployment failed; the previous revision was restored.')
+                                error('Stable deployment failed. Previous revision was restored.')
                             }
 
                             bat 'kubectl get deployment e-waste-portal'
@@ -305,7 +293,7 @@ pipeline {
                 exit /b 0
             '''
 
-            echo 'Pipeline finished. Review stage logs and deployment status.'
+            echo 'Pipeline finished. Review the stage logs and deployment status.'
         }
 
         success {
