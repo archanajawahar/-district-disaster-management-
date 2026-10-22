@@ -161,7 +161,8 @@ pipeline {
         }
 
         
-stage('Push Image to Docker Hub') {
+
+stage('Diagnose Docker Hub Login') {
     steps {
         withCredentials([
             usernamePassword(
@@ -170,49 +171,35 @@ stage('Push Image to Docker Hub') {
                 passwordVariable: 'DH_TOKEN'
             )
         ]) {
-            script {
-                int loginStatus = powershell(
-                    returnStatus: true,
-                    script: '''
-                        $ErrorActionPreference = 'Stop'
+            powershell '''
+                $ErrorActionPreference = 'Stop'
 
-                        if ([string]::IsNullOrWhiteSpace($env:DH_USER)) {
-                            Write-Error "Jenkins Docker Hub username is empty."
-                            exit 1
-                        }
-
-                        if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) {
-                            Write-Error "Jenkins Docker Hub token is empty."
-                            exit 1
-                        }
-
-                        $env:DH_TOKEN | docker login `
-                            --username $env:DH_USER `
-                            --password-stdin
-
-                        if ($LASTEXITCODE -ne 0) {
-                            exit $LASTEXITCODE
-                        }
-                    '''
-                )
-
-                if (loginStatus != 0) {
-                    error('Docker Hub login failed. Verify the Jenkins credential ID and token.')
+                if ([string]::IsNullOrWhiteSpace($env:DH_USER)) {
+                    throw "Jenkins did not provide a username."
                 }
 
-                try {
-                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
-
-                    bat "docker tag ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-
-                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                } finally {
-                    powershell 'docker logout'
+                if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) {
+                    throw "Jenkins did not provide a token."
                 }
-            }
+
+                Write-Host "Username credential is present."
+                Write-Host "Token credential is present."
+                Write-Host "Testing Docker Hub authentication..."
+
+                $env:DH_TOKEN |
+                    docker login --username $env:DH_USER --password-stdin
+
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Docker Hub rejected the supplied credentials."
+                }
+
+                Write-Host "Docker Hub login succeeded."
+                docker logout
+            '''
         }
     }
 }
+
 
 
         stage('Deploy and Verify on Kubernetes') {
