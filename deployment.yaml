@@ -1,1 +1,56 @@
 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disaster-response-portal
+  labels:
+    app: disaster-response-portal
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: disaster-response-portal
+  template:
+    metadata:
+      labels:
+        app: disaster-response-portal
+    spec:
+      containers:
+        - name: disaster-response-portal
+          image: arch an ajawahar14/disaster-response-portal:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: disaster-response-portal-service
+spec:
+  type: NodePort
+  selector:
+    app: disaster-response-portal
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30087

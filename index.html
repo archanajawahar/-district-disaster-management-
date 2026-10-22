@@ -2,399 +2,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>District Disaster Management Portal</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
-        }
-
-        header {
-            background: #17365d;
-            color: white;
-            padding: 25px;
-            text-align: center;
-        }
-
-        header h1 {
-            margin: 0 0 10px;
-        }
-
-        header p {
-            margin: 0;
-        }
-
-        main {
-            max-width: 1400px;
-            margin: auto;
-            padding: 25px;
-        }
-
-        section {
-            margin-bottom: 30px;
-        }
-
-        h2 {
-            color: #17365d;
-            margin-bottom: 15px;
-        }
-
-        .notice {
-            background: white;
-            border-left: 5px solid #2563eb;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            line-height: 1.6;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #dbe3ec;
-        }
-
-        table {
-            width: 100%;
-            min-width: 1050px;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 13px;
-            text-align: left;
-            border-bottom: 1px solid #dbe3ec;
-        }
-
-        th {
-            background: #dce6f1;
-            color: #17365d;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
-        .critical {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .high {
-            background: #ffedd5;
-            color: #9a3412;
-        }
-
-        .medium {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .open {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .resolved {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .centres {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 18px;
-        }
-
-        .centre-card {
-            background: white;
-            border: 1px solid #dbe3ec;
-            border-radius: 8px;
-            padding: 18px;
-        }
-
-        .centre-card h3 {
-            color: #17365d;
-            margin-top: 0;
-        }
-
-        .centre-card p {
-            line-height: 1.5;
-        }
-
-        .progress {
-            height: 12px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-        }
-
-        .normal {
-            background: #16a34a;
-        }
-
-        .warning {
-            background: #f59e0b;
-        }
-
-        .danger {
-            background: #dc2626;
-        }
-
-        .critical-alert {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-            border-left: 6px solid #dc2626;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            line-height: 1.6;
-        }
-
-        footer {
-            background: #17365d;
-            color: white;
-            text-align: center;
-            padding: 15px;
-        }
-
-        @media (max-width: 600px) {
-            main {
-                padding: 12px;
-            }
-
-            header {
-                padding: 20px 12px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>District Disaster Management Portal</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#1e293b}
+header{background:#17365d;color:white;text-align:center;padding:25px}
+header h1{margin-top:0}
+main{max-width:1400px;margin:auto;padding:24px}
+h2{color:#17365d}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px}
+.card,.panel{background:white;border:1px solid #dbe3ec;border-radius:8px;padding:18px}
+.card h3{margin-top:0;color:#17365d}
+.metric{font-size:30px;font-weight:bold;margin:10px 0}
+.notice{padding:15px;background:#fff;border-left:5px solid #2563eb;margin:15px 0;line-height:1.6}
+.alert{padding:15px;background:#fee2e2;border-left:5px solid #dc2626;color:#991b1b;font-weight:bold;margin:12px 0;border-radius:5px}
+table{width:100%;border-collapse:collapse;min-width:1000px;background:white}
+th,td{padding:12px;border-bottom:1px solid #dbe3ec;text-align:left}
+th{background:#dce6f1;color:#17365d}
+.table-wrap{overflow-x:auto;border:1px solid #dbe3ec;border-radius:8px}
+.tag{padding:5px 9px;border-radius:14px;font-size:12px;font-weight:bold;white-space:nowrap}
+.critical{background:#fee2e2;color:#991b1b}
+.high{background:#ffedd5;color:#9a3412}
+.medium{background:#dbeafe;color:#1d4ed8}
+.open{background:#fef3c7;color:#92400e}
+.resolved{background:#dcfce7;color:#166534}
+.low{background:#dcfce7;color:#166534}
+select,button{padding:9px;border:1px solid #94a3b8;border-radius:5px;font-size:14px}
+button{background:#17365d;color:white;cursor:pointer}
+.progress{height:12px;background:#e2e8f0;border-radius:10px;overflow:hidden}
+.bar{height:100%}
+.red{background:#dc2626}.orange{background:#f59e0b}.green{background:#16a34a}
+.small{color:#64748b;font-size:13px}
+footer{background:#17365d;color:white;text-align:center;padding:15px}
+@media(max-width:600px){main{padding:12px}header{padding:18px}}
+</style>
 </head>
-
 <body>
 <header>
-    <h1>Disaster Response and Emergency Resource Coordination Portal</h1>
-    <p>District Disaster Management Authority</p>
-    <p>Simulated Emergency Response Dashboard</p>
+<h1>Disaster Response and Emergency Resource Coordination Portal</h1>
+<p>District Disaster Management Authority | Simulated Emergency Dashboard</p>
 </header>
 
 <main>
-    <div class="notice">
-        <strong>Dashboard Overview:</strong>
-        Monitor disaster incidents, affected locations, evacuation centres,
-        occupancy levels and relief supplies. This portal uses simulated data
-        for academic demonstration and is not connected to live emergency services.
-    </div>
+<div class="notice">
+<strong>Emergency Operations:</strong> Monitor disaster incidents, evacuation centres, rescue-team availability and relief supplies. This is a demonstration using simulated data, not a live emergency service.
+</div>
 
-    <section>
-        <h2>1. Disaster Incident Records</h2>
+<section>
+<h2>1. Resource Allocation and Incident Analytics</h2>
+<div class="grid">
+<div class="card"><h3>Open Incidents</h3><div class="metric" id="openCount">0</div></div>
+<div class="card"><h3>Resolved Incidents</h3><div class="metric" id="resolvedCount">0</div></div>
+<div class="card"><h3>Available Rescue Teams</h3><div class="metric">3</div><p class="small">Teams Delta, Echo and Foxtrot are available.</p></div>
+<div class="card"><h3>Centres Needing Supplies</h3><div class="metric" id="replenishmentCount">0</div><p class="small">Centres with low relief supplies.</p></div>
+</div>
+<div class="panel" id="priorityIncident"><strong>Highest-priority incident:</strong> Calculating...</div>
+<div class="notice" id="allocationStatus"><strong>Resource allocation:</strong> Calculating current assignments...</div>
+</section>
 
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Incident ID</th>
-                        <th>Affected Location</th>
-                        <th>Incident Category</th>
-                        <th>Severity</th>
-                        <th>Reported Time</th>
-                        <th>Assigned Response Team</th>
-                        <th>Resolution Status</th>
-                    </tr>
-                </thead>
+<section>
+<h2>2. Disaster Incident Records</h2>
+<label for="severityFilter"><strong>Filter by severity:</strong></label>
+<select id="severityFilter">
+<option value="All">All severities</option>
+<option value="Critical">Critical</option>
+<option value="High">High</option>
+<option value="Medium">Medium</option>
+<option value="Low">Low</option>
+</select>
+<div class="table-wrap" style="margin-top:12px">
+<table id="incidentTable">
+<thead><tr>
+<th>Incident ID</th><th>Affected Location</th><th>Incident Category</th>
+<th>Severity</th><th>Reported Time</th><th>Assigned Response Team</th><th>Resolution Status</th>
+</tr></thead>
+<tbody>
+<tr data-severity="Critical" data-status="Open" data-team="Rescue Team Alpha">
+<td>INC-001</td><td>North Riverbank, Ward 4</td><td>Urban Flooding</td><td><span class="tag critical">Critical</span></td><td>22 Oct 2026, 06:15</td><td>Rescue Team Alpha</td><td><span class="tag open">Open</span></td>
+</tr>
+<tr data-severity="High" data-status="Open" data-team="Rapid Response Team 2">
+<td>INC-002</td><td>East Market Road, Ward 7</td><td>Road Inundation</td><td><span class="tag high">High</span></td><td>22 Oct 2026, 07:05</td><td>Rapid Response Team 2</td><td><span class="tag open">Open</span></td>
+</tr>
+<tr data-severity="High" data-status="Open" data-team="Rescue Team Bravo">
+<td>INC-003</td><td>Lakeview Colony, Ward 2</td><td>Residential Evacuation</td><td><span class="tag high">High</span></td><td>22 Oct 2026, 07:40</td><td>Rescue Team Bravo</td><td><span class="tag open">Open</span></td>
+</tr>
+<tr data-severity="Medium" data-status="Resolved" data-team="Road Clearance Unit">
+<td>INC-004</td><td>Old Bus Stand, Ward 1</td><td>Blocked Access Route</td><td><span class="tag medium">Medium</span></td><td>22 Oct 2026, 08:10</td><td>Road Clearance Unit</td><td><span class="tag resolved">Resolved</span></td>
+</tr>
+<tr data-severity="Critical" data-status="Open" data-team="Rescue Team Charlie">
+<td>INC-005</td><td>South Canal Road, Ward 9</td><td>Stranded Residents</td><td><span class="tag critical">Critical</span></td><td>22 Oct 2026, 08:25</td><td>Rescue Team Charlie</td><td><span class="tag open">Open</span></td>
+</tr>
+<tr data-severity="Medium" data-status="Resolved" data-team="Utility Support Team">
+<td>INC-006</td><td>Hilltop Junction, Ward 5</td><td>Power Outage at Shelter</td><td><span class="tag medium">Medium</span></td><td>22 Oct 2026, 09:00</td><td>Utility Support Team</td><td><span class="tag resolved">Resolved</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 
-                <tbody>
-                    <tr>
-                        <td>INC-001</td>
-                        <td>North Riverbank, Ward 4</td>
-                        <td>Urban Flooding</td>
-                        <td><span class="status critical">Critical</span></td>
-                        <td>22 Oct 2026, 06:15</td>
-                        <td>Rescue Team Alpha</td>
-                        <td><span class="status open">Open</span></td>
-                    </tr>
+<section>
+<h2>3. Evacuation Centres and Relief Supplies</h2>
+<div id="criticalAlerts"></div>
+<div class="grid" id="centres">
+<div class="card" data-name="Central Community Hall" data-occupancy="94" data-meals="120" data-water="80" data-blankets="35">
+<h3>Central Community Hall</h3><p><strong>Location:</strong> Civic Centre Road, Ward 3</p>
+<p>Occupancy: 470 / 500 people (94%)</p><div class="progress"><div class="bar red" style="width:94%"></div></div>
+<p>Available capacity: 30 people</p><p>Meal packs: 120</p><p>Water kits: 80</p><p>Blankets: 35</p>
+</div>
+<div class="card" data-name="Government School Shelter" data-occupancy="78" data-meals="95" data-water="110" data-blankets="60">
+<h3>Government School Shelter</h3><p><strong>Location:</strong> School Street, Ward 6</p>
+<p>Occupancy: 273 / 350 people (78%)</p><div class="progress"><div class="bar orange" style="width:78%"></div></div>
+<p>Available capacity: 77 people</p><p>Meal packs: 95</p><p>Water kits: 110</p><p>Blankets: 60</p>
+</div>
+<div class="card" data-name="Riverside Relief Camp" data-occupancy="62" data-meals="160" data-water="145" data-blankets="90">
+<h3>Riverside Relief Camp</h3><p><strong>Location:</strong> Riverside Avenue, Ward 8</p>
+<p>Occupancy: 248 / 400 people (62%)</p><div class="progress"><div class="bar green" style="width:62%"></div></div>
+<p>Available capacity: 152 people</p><p>Meal packs: 160</p><p>Water kits: 145</p><p>Blankets: 90</p>
+</div>
+<div class="card" data-name="Northside Sports Complex" data-occupancy="91" data-meals="45" data-water="25" data-blankets="18">
+<h3>Northside Sports Complex</h3><p><strong>Location:</strong> Stadium Road, Ward 10</p>
+<p>Occupancy: 546 / 600 people (91%)</p><div class="progress"><div class="bar red" style="width:91%"></div></div>
+<p>Available capacity: 54 people</p><p>Meal packs: 45</p><p>Water kits: 25</p><p>Blankets: 18</p>
+</div>
+</div>
+</section>
 
-                    <tr>
-                        <td>INC-002</td>
-                        <td>East Market Road, Ward 7</td>
-                        <td>Road Inundation</td>
-                        <td><span class="status high">High</span></td>
-                        <td>22 Oct 2026, 07:05</td>
-                        <td>Rapid Response Team 2</td>
-                        <td><span class="status open">Open</span></td>
-                    </tr>
-
-                    <tr>
-                        <td>INC-003</td>
-                        <td>Lakeview Colony, Ward 2</td>
-                        <td>Residential Evacuation</td>
-                        <td><span class="status high">High</span></td>
-                        <td>22 Oct 2026, 07:40</td>
-                        <td>Rescue Team Bravo</td>
-                        <td><span class="status open">Open</span></td>
-                    </tr>
-
-                    <tr>
-                        <td>INC-004</td>
-                        <td>Old Bus Stand, Ward 1</td>
-                        <td>Blocked Access Route</td>
-                        <td><span class="status medium">Medium</span></td>
-                        <td>22 Oct 2026, 08:10</td>
-                        <td>Road Clearance Unit</td>
-                        <td><span class="status resolved">Resolved</span></td>
-                    </tr>
-
-                    <tr>
-                        <td>INC-005</td>
-                        <td>South Canal Road, Ward 9</td>
-                        <td>Stranded Residents</td>
-                        <td><span class="status critical">Critical</span></td>
-                        <td>22 Oct 2026, 08:25</td>
-                        <td>Rescue Team Charlie</td>
-                        <td><span class="status open">Open</span></td>
-                    </tr>
-
-                    <tr>
-                        <td>INC-006</td>
-                        <td>Hilltop Junction, Ward 5</td>
-                        <td>Power Outage at Shelter</td>
-                        <td><span class="status medium">Medium</span></td>
-                        <td>22 Oct 2026, 09:00</td>
-                        <td>Utility Support Team</td>
-                        <td><span class="status resolved">Resolved</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <section>
-        <h2>2. Evacuation Centres and Relief Supplies</h2>
-
-        <div id="criticalAlerts" aria-live="polite"></div>
-
-        <div class="centres">
-            <div class="centre-card"
-                 data-name="Central Community Hall"
-                 data-occupancy="94">
-                <h3>Central Community Hall</h3>
-                <p><strong>Location:</strong> Civic Centre Road, Ward 3</p>
-                <p><strong>Occupancy:</strong> 470 people / 500 capacity</p>
-                <p><strong>Occupancy Rate:</strong> 94%</p>
-                <div class="progress">
-                    <div class="progress-bar danger" style="width:94%"></div>
-                </div>
-                <p><strong>Available Capacity:</strong> 30 people</p>
-                <p><strong>Relief Supplies:</strong> 120 meal packs, 80 water kits, 35 blankets</p>
-            </div>
-
-            <div class="centre-card"
-                 data-name="Government School Shelter"
-                 data-occupancy="78">
-                <h3>Government School Shelter</h3>
-                <p><strong>Location:</strong> School Street, Ward 6</p>
-                <p><strong>Occupancy:</strong> 273 people / 350 capacity</p>
-                <p><strong>Occupancy Rate:</strong> 78%</p>
-                <div class="progress">
-                    <div class="progress-bar warning" style="width:78%"></div>
-                </div>
-                <p><strong>Available Capacity:</strong> 77 people</p>
-                <p><strong>Relief Supplies:</strong> 95 meal packs, 110 water kits, 60 blankets</p>
-            </div>
-
-            <div class="centre-card"
-                 data-name="Riverside Relief Camp"
-                 data-occupancy="62">
-                <h3>Riverside Relief Camp</h3>
-                <p><strong>Location:</strong> Riverside Avenue, Ward 8</p>
-                <p><strong>Occupancy:</strong> 248 people / 400 capacity</p>
-                <p><strong>Occupancy Rate:</strong> 62%</p>
-                <div class="progress">
-                    <div class="progress-bar normal" style="width:62%"></div>
-                </div>
-                <p><strong>Available Capacity:</strong> 152 people</p>
-                <p><strong>Relief Supplies:</strong> 160 meal packs, 145 water kits, 90 blankets</p>
-            </div>
-
-            <div class="centre-card"
-                 data-name="Northside Sports Complex"
-                 data-occupancy="91">
-                <h3>Northside Sports Complex</h3>
-                <p><strong>Location:</strong> Stadium Road, Ward 10</p>
-                <p><strong>Occupancy:</strong> 546 people / 600 capacity</p>
-                <p><strong>Occupancy Rate:</strong> 91%</p>
-                <div class="progress">
-                    <div class="progress-bar danger" style="width:91%"></div>
-                </div>
-                <p><strong>Available Capacity:</strong> 54 people</p>
-                <p><strong>Relief Supplies:</strong> 45 meal packs, 25 water kits, 18 blankets</p>
-            </div>
-        </div>
-    </section>
-
-    <section>
-        <h2>3. Emergency Coordination Instructions</h2>
-        <div class="notice">
-            <ul>
-                <li>Prioritize evacuation from locations marked Critical.</li>
-                <li>Coordinate rescue teams for stranded residents.</li>
-                <li>Direct evacuees towards centres with available capacity.</li>
-                <li>Monitor food, water and blanket supplies at every centre.</li>
-                <li>Update incident status after response activities are completed.</li>
-            </ul>
-        </div>
-    </section>
+<section>
+<h2>4. Emergency Coordination Instructions</h2>
+<div class="notice">
+<ul>
+<li>Prioritize incidents marked Critical, then High.</li>
+<li>Coordinate rescue teams for stranded residents.</li>
+<li>Direct evacuees to centres with available capacity.</li>
+<li>Replenish supplies at centres with low stock.</li>
+<li>Confirm response completion before resolving an incident.</li>
+</ul>
+</div>
+<p class="small">All incident records, response teams, occupancy figures and supplies are simulated for this academic project.</p>
+</section>
 </main>
-
-<footer>
-    District Disaster Management Authority | Initial Dashboard Version
-</footer>
+<footer>District Disaster Management Authority | Emergency Coordination Portal</footer>
 
 <script>
-    // Show a critical alert whenever occupancy is greater than 90%.
-    const centres = document.querySelectorAll(".centre-card[data-occupancy]");
-    const alerts = document.getElementById("criticalAlerts");
+(function () {
+    const rows = Array.from(document.querySelectorAll("#incidentTable tbody tr"));
+    const severityRank = {Critical: 4, High: 3, Medium: 2, Low: 1};
 
-    const highOccupancyCentres = Array.from(centres).filter(function (centre) {
-        return Number(centre.dataset.occupancy) > 90;
+    function updateAnalytics() {
+        const open = rows.filter(row => row.dataset.status === "Open");
+        const resolved = rows.filter(row => row.dataset.status === "Resolved");
+
+        document.getElementById("openCount").textContent = open.length;
+        document.getElementById("resolvedCount").textContent = resolved.length;
+
+        const highest = open.slice().sort((a, b) =>
+            severityRank[b.dataset.severity] - severityRank[a.dataset.severity]
+        )[0];
+
+        if (highest) {
+            const cells = highest.querySelectorAll("td");
+            document.getElementById("priorityIncident").innerHTML =
+                "<strong>Highest-priority incident:</strong> " +
+                cells[0].textContent + " — " + cells[1].textContent +
+                " (" + highest.dataset.severity + "). Assigned team: " +
+                highest.dataset.team + ".";
+        }
+
+        const teams = open.map(row => row.dataset.team);
+        document.getElementById("allocationStatus").textContent =
+            "Resource allocation: " + open.length +
+            " open incidents have assigned teams. Assigned teams: " +
+            teams.join(", ") + ". Three additional rescue teams are available.";
+
+        const centres = Array.from(document.querySelectorAll("#centres .card"));
+        const needsSupplies = centres.filter(card =>
+            Number(card.dataset.meals) < 60 ||
+            Number(card.dataset.water) < 40 ||
+            Number(card.dataset.blankets) < 25
+        );
+        document.getElementById("replenishmentCount").textContent = needsSupplies.length;
+
+        const criticalCentres = centres.filter(card =>
+            Number(card.dataset.occupancy) > 90
+        );
+        const alertContainer = document.getElementById("criticalAlerts");
+        alertContainer.innerHTML = "";
+
+        if (criticalCentres.length) {
+            const alert = document.createElement("div");
+            alert.className = "alert";
+            alert.setAttribute("role", "alert");
+            alert.textContent = "CRITICAL OCCUPANCY ALERT: " +
+                criticalCentres.map(card =>
+                    card.dataset.name + " (" + card.dataset.occupancy + "%)"
+                ).join(", ") +
+                ". Coordinate overflow capacity and evacuation support immediately.";
+            alertContainer.appendChild(alert);
+        }
+    }
+
+    document.getElementById("severityFilter").addEventListener("change", function () {
+        rows.forEach(row => {
+            row.style.display =
+                this.value === "All" || row.dataset.severity === this.value ? "" : "none";
+        });
     });
 
-    if (highOccupancyCentres.length > 0) {
-        const alertBox = document.createElement("div");
-        alertBox.className = "critical-alert";
-        alertBox.setAttribute("role", "alert");
-
-        const centreNames = highOccupancyCentres.map(function (centre) {
-            return centre.dataset.name + " (" + centre.dataset.occupancy + "%)";
-        });
-
-        alertBox.textContent =
-            "CRITICAL ALERT: Occupancy exceeds 90% at " +
-            centreNames.join(", ") +
-            ". Arrange overflow capacity and coordinate evacuation support immediately.";
-
-        alerts.appendChild(alertBox);
-    }
+    updateAnalytics();
+})();
 </script>
 </body>
 </html>
-
