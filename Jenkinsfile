@@ -97,39 +97,77 @@ pipeline {
             }
         }
 
-        stage('Push Image to Docker Hub') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: "${DOCKER_CREDENTIALS_ID}",
-                        usernameVariable: 'DH_USER',
-                        passwordVariable: 'DH_TOKEN'
-                    )
-                ]) {
-                    script {
-                        int loginStatus = bat(
-                            returnStatus: true,
-                            script: '''
-                            @echo off
-                            powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $env:DH_TOKEN | docker login --username $env:DH_USER --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
-                            '''
-                        )
+        
+stage('Push Image to Docker Hub') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )
+        ]) {
+            powershell '''
+                $ErrorActionPreference = 'Stop'
 
-                        if (loginStatus != 0) {
-                            error('Docker Hub login failed. Check the username and access token stored in Jenkins credentials.')
-                        }
-
-                        try {
-                            bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
-                            bat "docker tag ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                            bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                        } finally {
-                            bat 'docker logout'
-                        }
-                    }
+                if ([string]::IsNullOrWhiteSpace($env:DOCKER_USER)) {
+                    throw "Docker Hub username is empty."
                 }
+
+                if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
+                    throw "Docker Hub token/password is empty."
+                }
+
+                # Pass credentials directly through stdin.
+                # This avoids CMD interpreting special characters in the token.
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName = "docker.exe"
+                $psi.Arguments = "login --username `"$env:DOCKER_USER`" --password-stdin"
+                $psi.UseShellExecute = $false
+                $psi.RedirectStandardInput = $true
+                $psi.RedirectStandardOutput = $true
+                $psi.RedirectStandardError = $true
+                $psi.CreateNoWindow = $true
+
+                $proc = New-Object System.Diagnostics.Process
+                $proc.StartInfo = $psi
+
+                [void]$proc.Start()
+                $proc.StandardInput.WriteLine($env:DOCKER_PASS)
+                $proc.StandardInput.Close()
+
+                $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+                $stderrTask = $proc.StandardError.ReadToEndAsync()
+
+                $proc.WaitForExit()
+
+                $stdout = $stdoutTask.Result
+                $stderr = $stderrTask.Result
+
+                if ($stdout) { Write-Host $stdout }
+
+                if ($proc.ExitCode -ne 0) {
+                    # Do not print the token or credential values.
+                    if ($stderr) { Write-Host $stderr }
+                    throw "Docker Hub login failed with exit code $($proc.ExitCode). Check the saved Jenkins credential and Docker Hub token permissions."
+                }
+
+                Write-Host "Docker Hub login succeeded."
+            '''
+
+            try {
+                bat "docker push archanajawahar14/disaster-response-portal:v${BUILD_NUMBER}"
+
+                bat "docker tag archanajawahar14/disaster-response-portal:v${BUILD_NUMBER} archanajawahar14/disaster-response-portal:latest"
+
+                bat "docker push archanajawahar14/disaster-response-portal:latest"
+            } finally {
+                bat 'docker logout'
             }
         }
+    }
+}
+
 
         stage('Deploy and Verify on Kubernetes') {
             when {
