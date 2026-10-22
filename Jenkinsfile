@@ -137,6 +137,7 @@ pipeline {
         }
 
         
+        
         stage('Push Image to Docker Hub') {
             steps {
                 withCredentials([
@@ -152,25 +153,38 @@ pipeline {
                             script: '''
                                 $ErrorActionPreference = 'Stop'
 
-                                if ([string]::IsNullOrWhiteSpace($env:DOCKER_USER)) {
-                                    Write-Error "Docker username was not provided by Jenkins."
-                                    exit 1
-                                }
+                                $docker = Get-Command docker.exe -ErrorAction Stop
 
-                                if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
-                                    Write-Error "Docker password/token was not provided by Jenkins."
-                                    exit 1
-                                }
+                                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                                $psi.FileName = $docker.Source
+                                $psi.Arguments = "login --username `"$env:DOCKER_USER`" --password-stdin"
+                                $psi.UseShellExecute = $false
+                                $psi.RedirectStandardInput = $true
+                                $psi.RedirectStandardOutput = $true
+                                $psi.RedirectStandardError = $true
+                                $psi.CreateNoWindow = $true
 
-                                $username = $env:DOCKER_USER.Trim()
-                                $token = $env:DOCKER_PASS.Trim()
+                                $process = New-Object System.Diagnostics.Process
+                                $process.StartInfo = $psi
 
-                                $token | docker login `
-                                    --username $username `
-                                    --password-stdin
+                                [void]$process.Start()
 
-                                if ($LASTEXITCODE -ne 0) {
-                                    exit $LASTEXITCODE
+                                $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+                                $stderrTask = $process.StandardError.ReadToEndAsync()
+
+                                $process.StandardInput.WriteLine($env:DOCKER_PASS)
+                                $process.StandardInput.Close()
+
+                                $process.WaitForExit()
+
+                                $stdout = $stdoutTask.Result
+                                $stderr = $stderrTask.Result
+
+                                if ($stdout) { Write-Host $stdout }
+                                if ($stderr) { Write-Host $stderr }
+
+                                if ($process.ExitCode -ne 0) {
+                                    exit $process.ExitCode
                                 }
 
                                 exit 0
@@ -178,16 +192,13 @@ pipeline {
                         )
 
                         if (loginStatus != 0) {
-                            error("Docker Hub login failed. PowerShell exit code: ${loginStatus}")
+                            error("Docker Hub login failed with exit code ${loginStatus}.")
                         }
 
                         try {
                             bat 'docker push %DOCKER_IMAGE%:%IMAGE_TAG%'
 
-                            if (params.RELEASE_MODE == 'STABLE') {
-                                bat 'docker tag %DOCKER_IMAGE%:%IMAGE_TAG% %DOCKER_IMAGE%:latest'
-                                bat 'docker push %DOCKER_IMAGE%:latest'
-                            }
+                            echo 'Docker image pushed successfully.'
                         } finally {
                             powershell(
                                 returnStatus: true,
@@ -198,6 +209,7 @@ pipeline {
                 }
             }
         }
+
 
 
         stage('Deploy and Verify') {
