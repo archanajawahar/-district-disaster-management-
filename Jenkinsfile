@@ -105,42 +105,39 @@ pipeline {
             }
         }
 
-        stage('Push Image to Docker Hub') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DH_USER',
-                        passwordVariable: 'DH_TOKEN'
-                    )
-                ]) {
-                    script {
-                        int loginStatus = bat(
-                            returnStatus: true,
-                            script: '''
-                                @echo off
-                                powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if ([string]::IsNullOrWhiteSpace($env:DH_USER)) { Write-Error 'Jenkins username binding is empty'; exit 2 }; if ([string]::IsNullOrWhiteSpace($env:DH_TOKEN)) { Write-Error 'Jenkins token binding is empty'; exit 3 }; $token = $env:DH_TOKEN.Trim(); $token | docker login --username $env:DH_USER.Trim() --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
-                            '''
-                        )
+        
+stage('Push Image to Docker Hub') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DH_USER',
+                passwordVariable: 'DH_TOKEN'
+            )
+        ]) {
+            script {
+                int loginStatus = bat(
+                    returnStatus: true,
+                    script: '''
+@echo off
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $u=$env:DH_USER.Trim(); $p=$env:DH_TOKEN; if ([string]::IsNullOrWhiteSpace($u) -or [string]::IsNullOrWhiteSpace($p)) { Write-Error 'Credential binding is empty'; exit 1 }; $p | docker login --username $u --password-stdin; exit $LASTEXITCODE"
+'''
+                )
 
-                        if (loginStatus != 0) {
-                            error("Docker Hub login failed with exit code ${loginStatus}. Check which Jenkins credential is bound to dockerhub-creds.")
-                        }
+                if (loginStatus != 0) {
+                    error("Docker Hub login failed with exit code ${loginStatus}.")
+                }
 
-                        try {
-                            bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
-
-                            if (params.RELEASE_MODE == 'STABLE') {
-                                bat "docker tag ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                                bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:latest"
-                            }
-                        } finally {
-                            bat 'docker logout'
-                        }
-                    }
+                try {
+                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                } finally {
+                    bat 'docker logout'
                 }
             }
         }
+    }
+}
+
 
         stage('Deploy and Verify on Kubernetes') {
             when {
