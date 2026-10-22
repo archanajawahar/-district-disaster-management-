@@ -138,77 +138,47 @@ pipeline {
 
         
         
-        stage('Push Image to Docker Hub') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    script {
-                        int loginStatus = powershell(
-                            returnStatus: true,
-                            script: '''
-                                $ErrorActionPreference = 'Stop'
+        
+stage('Push Image to Docker Hub') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )
+        ]) {
+            powershell '''
+                $ErrorActionPreference = 'Stop'
 
-                                $docker = Get-Command docker.exe -ErrorAction Stop
+                $dockerUser = $env:DOCKER_USER
+                $dockerPass = $env:DOCKER_PASS
 
-                                $psi = New-Object System.Diagnostics.ProcessStartInfo
-                                $psi.FileName = $docker.Source
-                                $psi.Arguments = "login --username `"$env:DOCKER_USER`" --password-stdin"
-                                $psi.UseShellExecute = $false
-                                $psi.RedirectStandardInput = $true
-                                $psi.RedirectStandardOutput = $true
-                                $psi.RedirectStandardError = $true
-                                $psi.CreateNoWindow = $true
-
-                                $process = New-Object System.Diagnostics.Process
-                                $process.StartInfo = $psi
-
-                                [void]$process.Start()
-
-                                $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-                                $stderrTask = $process.StandardError.ReadToEndAsync()
-
-                                $process.StandardInput.WriteLine($env:DOCKER_PASS)
-                                $process.StandardInput.Close()
-
-                                $process.WaitForExit()
-
-                                $stdout = $stdoutTask.Result
-                                $stderr = $stderrTask.Result
-
-                                if ($stdout) { Write-Host $stdout }
-                                if ($stderr) { Write-Host $stderr }
-
-                                if ($process.ExitCode -ne 0) {
-                                    exit $process.ExitCode
-                                }
-
-                                exit 0
-                            '''
-                        )
-
-                        if (loginStatus != 0) {
-                            error("Docker Hub login failed with exit code ${loginStatus}.")
-                        }
-
-                        try {
-                            bat 'docker push %DOCKER_IMAGE%:%IMAGE_TAG%'
-
-                            echo 'Docker image pushed successfully.'
-                        } finally {
-                            powershell(
-                                returnStatus: true,
-                                script: 'docker logout'
-                            )
-                        }
-                    }
+                if ([string]::IsNullOrWhiteSpace($dockerUser) -or
+                    [string]::IsNullOrEmpty($dockerPass)) {
+                    throw "Docker Hub credentials are missing from Jenkins."
                 }
-            }
+
+                $dockerPass | docker login `
+                    --username $dockerUser `
+                    --password-stdin
+
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Docker Hub login failed."
+                }
+
+                Write-Host "Docker Hub login successful."
+            '''
+
+            bat 'docker push %DOCKER_IMAGE%:%IMAGE_TAG%'
+
+            powershell '''
+                docker logout
+            '''
         }
+    }
+}
+
 
 
 
