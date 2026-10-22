@@ -98,6 +98,7 @@ pipeline {
         }
 
         
+
 stage('Push Image to Docker Hub') {
     steps {
         withCredentials([
@@ -115,58 +116,34 @@ stage('Push Image to Docker Hub') {
                 }
 
                 if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
-                    throw "Docker Hub token/password is empty."
+                    throw "Docker Hub password/token is empty."
                 }
 
-                # Pass credentials directly through stdin.
-                # This avoids CMD interpreting special characters in the token.
-                $psi = New-Object System.Diagnostics.ProcessStartInfo
-                $psi.FileName = "docker.exe"
-                $psi.Arguments = "login --username `"$env:DOCKER_USER`" --password-stdin"
-                $psi.UseShellExecute = $false
-                $psi.RedirectStandardInput = $true
-                $psi.RedirectStandardOutput = $true
-                $psi.RedirectStandardError = $true
-                $psi.CreateNoWindow = $true
+                $env:DOCKER_PASS |
+                    docker login --username $env:DOCKER_USER --password-stdin
 
-                $proc = New-Object System.Diagnostics.Process
-                $proc.StartInfo = $psi
-
-                [void]$proc.Start()
-                $proc.StandardInput.WriteLine($env:DOCKER_PASS)
-                $proc.StandardInput.Close()
-
-                $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
-                $stderrTask = $proc.StandardError.ReadToEndAsync()
-
-                $proc.WaitForExit()
-
-                $stdout = $stdoutTask.Result
-                $stderr = $stderrTask.Result
-
-                if ($stdout) { Write-Host $stdout }
-
-                if ($proc.ExitCode -ne 0) {
-                    # Do not print the token or credential values.
-                    if ($stderr) { Write-Host $stderr }
-                    throw "Docker Hub login failed with exit code $($proc.ExitCode). Check the saved Jenkins credential and Docker Hub token permissions."
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Docker Hub login failed. Check the credential binding and token validity."
                 }
 
                 Write-Host "Docker Hub login succeeded."
             '''
 
-            try {
-                bat "docker push archanajawahar14/disaster-response-portal:v${BUILD_NUMBER}"
+            bat 'docker push archanajawahar14/disaster-response-portal:v%BUILD_NUMBER%'
 
-                bat "docker tag archanajawahar14/disaster-response-portal:v${BUILD_NUMBER} archanajawahar14/disaster-response-portal:latest"
+            bat '''
+                docker tag archanajawahar14/disaster-response-portal:v%BUILD_NUMBER% archanajawahar14/disaster-response-portal:latest
+                if errorlevel 1 exit /b 1
+                docker push archanajawahar14/disaster-response-portal:latest
+            '''
 
-                bat "docker push archanajawahar14/disaster-response-portal:latest"
-            } finally {
-                bat 'docker logout'
-            }
+            powershell '''
+                docker logout
+            '''
         }
     }
 }
+
 
 
         stage('Deploy and Verify on Kubernetes') {
